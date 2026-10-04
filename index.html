@@ -3,12 +3,24 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SoundBoard v6</title>
+<title>SoundBoard v7</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#141418;color:#e6e6ea;font-family:"Segoe UI",system-ui,"Noto Sans Thai",sans-serif;min-height:100vh;overscroll-behavior:none}
+html{background:#141418}
+body{background:transparent;color:#e6e6ea;font-family:"Segoe UI",system-ui,"Noto Sans Thai",sans-serif;
+  min-height:100vh;overscroll-behavior:none;position:relative}
+
+/* ===== รูปพื้นหลัง มุมขวาล่าง + กลับด้าน (mirror) ===== */
+#bgart{position:fixed;right:-10px;bottom:-10px;z-index:0;pointer-events:none;user-select:none;
+  width:min(46vw,560px);opacity:.30;transform:scaleX(-1);
+  filter:drop-shadow(0 0 40px #000a);transition:opacity .3s}
+#sign{position:fixed;right:18px;bottom:12px;z-index:1;pointer-events:none;user-select:none;
+  font-size:15px;letter-spacing:1.2px;color:#49e08b;opacity:.72;
+  text-shadow:0 2px 10px #000,0 0 18px #49e08b33;font-weight:600}
+@media(max-width:620px){#bgart{width:70vw;opacity:.22}}
+
 header{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:9px;flex-wrap:wrap;
-  padding:12px 18px;background:#1b1b21;border-bottom:1px solid #2e2e38}
+  padding:12px 18px;background:#1b1b21f2;backdrop-filter:blur(6px);border-bottom:1px solid #2e2e38}
 h1{font-size:17px;letter-spacing:.5px;color:#49e08b;font-weight:700}
 .btn{background:#2a2a33;border:1px solid #3a3a46;color:#ddd;border-radius:7px;padding:7px 13px;
   font-size:13px;cursor:pointer;transition:.15s;font-family:inherit}
@@ -21,19 +33,23 @@ h1{font-size:17px;letter-spacing:.5px;color:#49e08b;font-weight:700}
 @keyframes bl{50%{opacity:.45}}
 .master{display:flex;align-items:center;gap:8px;font-size:12px;color:#8a8a9a}
 .master input{width:120px;accent-color:#49e08b}
-#board{display:flex;flex-wrap:wrap;gap:12px;padding:18px;align-content:flex-start}
-.strip{width:200px;background:#1e1e25;border:1px solid #30303c;border-radius:12px;padding:10px;
+
+#board{position:relative;z-index:2;display:flex;flex-wrap:wrap;gap:12px;padding:18px;align-content:flex-start}
+.strip{width:200px;background:#1e1e25f2;border:1px solid #30303c;border-radius:12px;padding:10px;
   display:flex;flex-direction:column;gap:7px;transition:border-color .15s,box-shadow .15s}
 .strip.playing{border-color:#49e08b;box-shadow:0 0 0 1px #49e08b33,0 0 18px #49e08b22}
 .strip.held{border-color:#8a7430;box-shadow:0 0 12px #e0c04922}
 .strip.warn{border-color:#c9a53c;box-shadow:0 0 14px #e0c04933}
 .strip.err{border-color:#e04949;box-shadow:0 0 14px #e0494933}
+.strip.sel{outline:2px solid #49e08b;outline-offset:3px}
 .strip.drag{opacity:.35}
 .preview{position:relative;width:100%;height:98px;background:#000;border-radius:8px;overflow:hidden;
   display:flex;align-items:center;justify-content:center;cursor:ew-resize;touch-action:none;user-select:none}
 .preview video{width:100%;height:100%;object-fit:cover;pointer-events:none}
 .preview canvas{width:100%;height:100%;pointer-events:none}
 .badge{position:absolute;top:5px;left:5px;background:#000a;color:#49e08b;font-size:9px;
+  padding:2px 6px;border-radius:4px;letter-spacing:1px;pointer-events:none}
+.keyno{position:absolute;bottom:5px;left:5px;background:#000b;color:#ffe59c;font-size:9px;
   padding:2px 6px;border-radius:4px;letter-spacing:1px;pointer-events:none}
 .grip{position:absolute;top:3px;right:4px;color:#fff9;font-size:14px;padding:2px 5px;
   background:#000a;border-radius:5px;cursor:grab;line-height:1}
@@ -90,7 +106,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:28px;border-radius:4px;bac
 #drop{position:fixed;inset:0;background:#000d;border:3px dashed #49e08b;display:none;
   align-items:center;justify-content:center;font-size:22px;color:#49e08b;z-index:99}
 #drop.show{display:flex}
-#empty{width:100%;text-align:center;color:#55556a;padding:70px 20px;font-size:14px;line-height:2}
+#empty{width:100%;text-align:center;color:#8a8a9e;padding:70px 20px;font-size:14px;line-height:2}
 #sink{position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:.01;pointer-events:none}
 #toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:200;
   display:flex;flex-direction:column;gap:7px;align-items:center;pointer-events:none}
@@ -101,12 +117,14 @@ kbd{background:#2a2a33;border:1px solid #3a3a46;border-radius:4px;padding:1px 6p
 </head>
 <body>
 
+<img id="bgart" src="https://github.com/dragokurobane/SoundBoard/blob/main/images/dragon.png?raw=true" alt="">
+<div id="sign">By Kurobaเนะ ツ</div>
+
 <header>
   <h1>▣ SoundBoard</h1>
   <button class="btn" id="pick">+ เพิ่มไฟล์</button>
   <button class="btn" id="playZero">⏮ ALL จาก 0</button>
   <button class="btn" id="stopAll">■ หยุดทั้งหมด</button>
-  <button class="btn" id="link" title="กรอพร้อมกันทุกช่อง">⛓ LINK</button>
   <button class="btn on" id="fz" title="ดัน fader ขึ้นจาก 0 แล้วให้เริ่มเล่นจากวินาทีที่ 0">↑0 เฟดขึ้น = เริ่มที่ 0</button>
   <button class="btn" id="beep">🔔 ทดสอบเสียง</button>
   <button class="btn" id="clear">ล้างทั้งหมด</button>
@@ -117,7 +135,8 @@ kbd{background:#2a2a33;border:1px solid #3a3a46;border-radius:4px;padding:1px 6p
 
 <main id="board">
   <div id="empty">ลากไฟล์ mp3 / mp4 มาวางตรงนี้<br>
-  <kbd>1</kbd>–<kbd>9</kbd> เล่น/หยุด ช่องนั้น &nbsp;·&nbsp; <kbd>Esc</kbd> หยุดทั้งหมด &nbsp;·&nbsp; <kbd>←</kbd><kbd>→</kbd> กรอ 5 วิ</div>
+  <kbd>1</kbd>–<kbd>9</kbd> เล่น/หยุด ช่องนั้น &nbsp;·&nbsp; <kbd>Esc</kbd> หยุดทั้งหมด<br>
+  คลิกการ์ดเพื่อ <b>เลือกช่อง</b> แล้วกด <kbd>←</kbd><kbd>→</kbd> กรอ 5 วิ <i>เฉพาะช่องที่เลือก</i></div>
 </main>
 
 <div id="drop">วางไฟล์เพื่อเพิ่มช่อง</div>
@@ -170,10 +189,9 @@ function toast(msg,ms=4200){
   setTimeout(()=>d.remove(),ms);
 }
 
-/* ---- FIX #1: ramp ที่ปลอดภัย (อ่านค่าปัจจุบันก่อน cancel เสมอ) ---- */
 function rampTo(param,value,dur){
   if(!AC) return;
-  const now=AC.currentTime, cur=param.value;        /* อ่านก่อน! */
+  const now=AC.currentTime, cur=param.value;
   try{
     param.cancelScheduledValues(now);
     param.setValueAtTime(isFinite(cur)?cur:0,now);
@@ -184,18 +202,25 @@ function rampTo(param,value,dur){
 /* ====================== STATE ====================== */
 const board=document.getElementById('board'), emptyMsg=document.getElementById('empty'),
       sink=document.getElementById('sink');
-let channels=[], uid=0, dragId=null, LINK=false, FADEZERO=true;
+let channels=[], uid=0, dragId=null, FADEZERO=true, selected=null;
 
 const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
 const fmt=s=>isFinite(s)?String(Math.floor(s/60)).padStart(2,'0')+':'+String(Math.floor(s%60)).padStart(2,'0'):'--:--';
 const isVideo=f=>/^video\//.test(f.type)||/\.(mp4|webm|mov|mkv|avi|m4v)$/i.test(f.name);
 
-const PKEY='stemboard_presets';
+const PKEY='soundboard_presets';
 const presets=JSON.parse(localStorage.getItem(PKEY)||'{}');
 const savePreset=c=>{presets[c.file.name]={b:c.bassEl.value};
   localStorage.setItem(PKEY,JSON.stringify(presets));};
 
-/* ====================== FIX #3: คิวคำสั่ง play/pause ====================== */
+/* ====================== เลือกช่อง (สำหรับปุ่มลูกศร) ====================== */
+function select(c){
+  if(selected===c) return;
+  selected=c;
+  channels.forEach(x=>x.strip.classList.toggle('sel',x===c));
+}
+
+/* ====================== คิวคำสั่ง play/pause ====================== */
 function reqPlay(c){ c.want='play'; pump(c); }
 function reqPause(c){ c.want='pause'; pump(c); }
 async function pump(c){
@@ -213,17 +238,16 @@ async function pump(c){
       }else{
         if(!c.el.paused) c.el.pause();
       }
-      if(c.want===w) break;              /* ไม่มีคำสั่งใหม่แทรก = จบ */
+      if(c.want===w) break;
     }
   } finally { c.busy=false; }
 }
 
-/* ====================== SEEK ====================== */
-function seekTo(c,t,fromLink){
+/* ====================== SEEK (เฉพาะช่องเดียว) ====================== */
+function seekTo(c,t){
   if(!isFinite(c.el.duration))return;
   try{ c.el.currentTime=clamp(t,0,c.el.duration); }catch(_){}
   c.stall=0;
-  if(LINK&&!fromLink) channels.forEach(o=>{ if(o!==c) seekTo(o,t,true); });
 }
 const nudge=(c,d)=>seekTo(c,c.el.currentTime+d);
 
@@ -246,7 +270,7 @@ function ensureAudible(c){ if(+c.volEl.value<2) setVol(c,80); }
 
 /* ====================== ปุ่มใหญ่ ====================== */
 function heroClick(c){
-  unlock();
+  unlock(); select(c);
   const el=c.el;
   if(c.want==='play'&&!el.paused){ reqPause(c); return; }
   if(el.ended||el.currentTime>=(el.duration||0)-.05){ try{el.currentTime=0}catch(_){} }
@@ -290,6 +314,7 @@ function createChannel(file){
   s.innerHTML=`
     <div class="preview">${vid?'':'<canvas width="360" height="200"></canvas>'}
       <span class="badge">${vid?'VIDEO':'AUDIO'}</span>
+      <span class="keyno"></span>
       <span class="grip" title="ลากเพื่อสลับตำแหน่ง">⠿</span>
       <span class="hint">◀ ลากเพื่อกรอ ▶</span></div>
     <div class="name" title="${file.name}">${file.name}</div>
@@ -322,12 +347,14 @@ function createChannel(file){
     hero:s.querySelector('.hero'), statEl:s.querySelector('.stat'),
     data:ana?new Uint8Array(ana.frequencyBinCount):null};
 
+  /* คลิกที่ไหนในการ์ดก็เลือกช่องนี้ */
+  s.addEventListener('pointerdown',()=>select(c),true);
+
   const p=presets[file.name];
   if(p&&bass){ c.bassEl.value=p.b; bass.gain.value=+p.b;
     s.querySelector('.bass-v').textContent=(+p.b).toFixed(1)+' dB'; }
   if(!bass){ c.bassEl.disabled=true; s.querySelector('.bass-v').textContent='—'; }
 
-  /* ---- VOL fader ---- */
   c.volEl.addEventListener('input',()=>{
     const v=+c.volEl.value/100;
     s.querySelector('.vol-v').textContent=Math.round(v*100)+'%';
@@ -352,8 +379,8 @@ function createChannel(file){
 
   c.hero.onclick=()=>heroClick(c);
   s.querySelector('.zero').onclick=()=>playFromZero(c);
-  s.querySelector('.bk').onclick=()=>nudge(c,-5);
-  s.querySelector('.fw').onclick=()=>nudge(c,5);
+  s.querySelector('.bk').onclick=()=>{select(c);nudge(c,-5);};
+  s.querySelector('.fw').onclick=()=>{select(c);nudge(c,5);};
   s.querySelector('.loop').onclick=e=>{ el.loop=!el.loop; e.currentTarget.classList.toggle('on',el.loop); };
   s.querySelector('.mute').onclick=e=>{ c.mute=!c.mute; e.currentTarget.classList.toggle('on',c.mute); applyAll(); };
   s.querySelector('.solo').onclick=e=>{ c.solo=!c.solo; e.currentTarget.classList.toggle('on',c.solo); applyAll(); };
@@ -361,13 +388,15 @@ function createChannel(file){
     c.want='pause'; el.pause();
     try{src&&src.disconnect()}catch(_){} try{gain&&gain.disconnect()}catch(_){}
     URL.revokeObjectURL(el.src); el.removeAttribute('src'); try{el.load()}catch(_){}
-    el.remove(); s.remove(); channels=channels.filter(x=>x!==c); applyAll(); refresh();
+    el.remove(); s.remove(); channels=channels.filter(x=>x!==c);
+    if(selected===c) selected=null;
+    applyAll(); refresh(); renumber();
   };
 
-  /* ---- กรอด้วยแถบ progress ---- */
   const bar=s.querySelector('.bar');
   bar.addEventListener('pointerdown',e=>{
     if(!isFinite(el.duration))return;
+    select(c);
     try{bar.setPointerCapture(e.pointerId)}catch(_){}
     const go=ev=>{ const r=bar.getBoundingClientRect();
       seekTo(c,(ev.clientX-r.left)/r.width*el.duration); ev.preventDefault(); };
@@ -377,10 +406,10 @@ function createChannel(file){
     addEventListener('pointerup',up); addEventListener('pointercancel',up);
   });
 
-  /* ---- กรอด้วยการลากบนพรีวิว + ล้อเมาส์ ---- */
   const prevBox=s.querySelector('.preview'), grip=s.querySelector('.grip');
   prevBox.addEventListener('pointerdown',e=>{
     if(e.target===grip||!isFinite(el.duration))return;
+    select(c);
     const x0=e.clientX, t0=el.currentTime;
     const sens=Math.max(el.duration/Math.max(260,prevBox.clientWidth*2.2),.02);
     try{prevBox.setPointerCapture(e.pointerId)}catch(_){}
@@ -391,7 +420,7 @@ function createChannel(file){
     addEventListener('pointerup',up); addEventListener('pointercancel',up);
   });
   prevBox.addEventListener('wheel',e=>{ if(!isFinite(el.duration))return;
-    e.preventDefault(); nudge(c,(e.deltaY>0?1:-1)*2); },{passive:false});
+    e.preventDefault(); select(c); nudge(c,(e.deltaY>0?1:-1)*2); },{passive:false});
 
   el.addEventListener('loadedmetadata',()=>{ s.querySelector('.dur').textContent=fmt(el.duration); });
   el.addEventListener('ended',()=>{ if(!el.loop) c.want='pause'; });
@@ -399,25 +428,38 @@ function createChannel(file){
     toast('เปิดไฟล์ไม่ได้: '+file.name); });
   el.addEventListener('stalled',()=>{ c.stall=Math.max(c.stall,2); });
 
-  /* ---- สลับตำแหน่ง ---- */
   grip.addEventListener('pointerdown',e=>{ e.stopPropagation(); s.draggable=true; });
   addEventListener('pointerup',()=>{ if(dragId!==id) s.draggable=false; });
   s.addEventListener('dragstart',e=>{ dragId=id; s.classList.add('drag'); e.dataTransfer.effectAllowed='move';
     try{e.dataTransfer.setData('text/plain',String(id))}catch(_){} });
-  s.addEventListener('dragend',()=>{ dragId=null; s.classList.remove('drag'); s.draggable=false; });
+  s.addEventListener('dragend',()=>{ dragId=null; s.classList.remove('drag'); s.draggable=false; resync(); });
   s.addEventListener('dragover',e=>{ e.preventDefault(); if(dragId===null||dragId===id)return;
     const from=board.querySelector('[data-id="'+dragId+'"]'); if(!from)return;
     const r=s.getBoundingClientRect();
     board.insertBefore(from,e.clientX<r.left+r.width/2?s:s.nextSibling); });
   s.addEventListener('drop',e=>e.preventDefault());
 
-  board.appendChild(s); channels.push(c); refresh(); paintHero(c);
+  board.appendChild(s); channels.push(c); refresh(); paintHero(c); renumber();
+  if(!selected) select(c);
   if(!vid) queueWave(file,s.querySelector('canvas'));
+}
+
+/* เรียงลำดับ channels ตามตำแหน่งจริงบนหน้าจอ หลังลากสลับ */
+function resync(){
+  const order=[...board.querySelectorAll('.strip')].map(e=>+e.dataset.id);
+  channels.sort((a,b)=>order.indexOf(a.id)-order.indexOf(b.id));
+  renumber();
+}
+function renumber(){
+  channels.forEach((c,i)=>{
+    const k=c.strip.querySelector('.keyno');
+    k.textContent = i<9 ? ('KEY '+(i+1)) : '';
+  });
 }
 
 /* ====================== TRANSPORT ====================== */
 function playFromZero(c){
-  unlock(); ensureAudible(c);
+  unlock(); select(c); ensureAudible(c);
   try{c.el.currentTime=0}catch(_){}
   applyGain(c,true); reqPlay(c);
 }
@@ -426,17 +468,17 @@ function stopAll(){
   setTimeout(()=>channels.forEach(c=>{ reqPause(c); try{c.el.currentTime=0}catch(_){} }),180);
 }
 
-/* ====================== FIX #2: WATCHDOG ====================== */
+/* ====================== WATCHDOG ====================== */
 setInterval(()=>{
   if(AC&&AC.state==='suspended'&&channels.some(c=>c.want==='play')) AC.resume().catch(()=>{});
   channels.forEach(c=>{
     const el=c.el;
     if(c.want!=='play'){ c.stall=0; c.lastT=el.currentTime; return; }
-    if(el.paused&&!el.ended){ pump(c); return; }       /* ถูกหยุดเองโดยไม่ได้สั่ง → สั่งเล่นซ้ำ */
+    if(el.paused&&!el.ended){ pump(c); return; }
     if(!el.paused){
       if(Math.abs(el.currentTime-c.lastT)<0.002) c.stall++; else c.stall=0;
       c.lastT=el.currentTime;
-      if(c.stall>=5){                                   /* ค้างเกิน ~1.5 วิ → สะกิดให้ไปต่อ */
+      if(c.stall>=5){
         c.stall=0;
         const t=el.currentTime;
         try{ el.currentTime=Math.min((el.duration||t)-.05,t+.02); }catch(_){}
@@ -446,7 +488,7 @@ setInterval(()=>{
   });
 },300);
 
-/* ====================== WAVEFORM (คิวทีละไฟล์) ====================== */
+/* ====================== WAVEFORM ====================== */
 const wq=[]; let wBusy=false;
 function queueWave(file,cv){
   if(!cv)return;
@@ -511,7 +553,7 @@ function setStat(c,txt,cls){
   requestAnimationFrame(tick);
 })();
 
-/* ====================== FADER (throttle ด้วย rAF) ====================== */
+/* ====================== FADER ====================== */
 document.addEventListener('pointerdown',e=>{
   const f=e.target.closest&&e.target.closest('.fwrap'); if(!f)return;
   const inp=f.querySelector('input[type=range]'); if(!inp||inp.disabled)return;
@@ -548,14 +590,12 @@ document.getElementById('pick').onclick=()=>document.getElementById('file').clic
 document.getElementById('file').onchange=e=>{addFiles(e.target.files);e.target.value='';};
 document.getElementById('playZero').onclick=()=>{unlock();channels.forEach(playFromZero);};
 document.getElementById('stopAll').onclick=stopAll;
-document.getElementById('link').onclick=e=>{LINK=!LINK;e.currentTarget.classList.toggle('on',LINK);
-  toast(LINK?'LINK เปิด — กรอช่องเดียว ทุกช่องตามหมด':'LINK ปิด');};
 document.getElementById('fz').onclick=e=>{FADEZERO=!FADEZERO;e.currentTarget.classList.toggle('on',FADEZERO);
   toast(FADEZERO?'เฟดขึ้นจาก 0 = เริ่มเล่นที่วินาที 0':'เฟดขึ้นจาก 0 = เล่นต่อจากตำแหน่งเดิม');};
 document.getElementById('clear').onclick=()=>{
   channels.forEach(c=>{ c.want='pause'; c.el.pause(); URL.revokeObjectURL(c.el.src);
     c.el.removeAttribute('src'); c.el.remove(); c.strip.remove(); });
-  channels=[]; refresh();
+  channels=[]; selected=null; refresh();
 };
 document.getElementById('beep').onclick=()=>{
   unlock(); if(!AC){toast('ไม่มี AudioContext');return;}
@@ -576,11 +616,24 @@ addEventListener('dragleave',()=>{if(--dc<=0)dz.classList.remove('show')});
 addEventListener('dragover',e=>e.preventDefault());
 addEventListener('drop',e=>{e.preventDefault();dc=0;dz.classList.remove('show');unlock();
   if(e.dataTransfer.files.length) addFiles(e.dataTransfer.files);});
+
+/* ====================== คีย์ลัด — ลูกศรกรอเฉพาะช่องที่เลือก ====================== */
 addEventListener('keydown',e=>{
   if(/INPUT|TEXTAREA/.test(e.target.tagName))return;
-  if(e.key==='Escape'){ e.preventDefault(); stopAll(); }
-  if(e.key==='ArrowLeft'){ e.preventDefault(); channels.forEach(c=>nudge(c,-5)); }
-  if(e.key==='ArrowRight'){ e.preventDefault(); channels.forEach(c=>nudge(c,5)); }
+  if(e.key==='Escape'){ e.preventDefault(); stopAll(); return; }
+
+  if(e.key==='ArrowLeft'||e.key==='ArrowRight'){
+    e.preventDefault();
+    if(!channels.length) return;
+    let c = selected && channels.includes(selected) ? selected : null;
+    if(!c) c = channels.find(x=>x.want==='play') || null;
+    if(!c){ toast('คลิกเลือกการ์ดก่อน แล้วค่อยกด ← → (กรอเฉพาะช่องที่เลือก)'); return; }
+    select(c);
+    nudge(c, e.key==='ArrowLeft' ? -5 : 5);
+    return;
+  }
+
+  /* เลื่อนช่องที่เลือก ด้วย Shift+←/→ ไม่ได้ใช้ ปล่อยไว้เผื่ออนาคต */
   if(/^[1-9]$/.test(e.key)){ const c=channels[+e.key-1]; if(c) heroClick(c); }
 });
 addEventListener('visibilitychange',()=>{ if(!document.hidden) unlock(); });
