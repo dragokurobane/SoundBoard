@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>StemBoard v6</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#141418;color:#e6e6ea;font-family:"Segoe UI",system-ui,"Noto Sans Thai",sans-serif;min-height:100vh;overscroll-behavior:none}
+header{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+  padding:12px 18px;background:#1b1b21;border-bottom:1px solid #2e2e38}
+h1{font-size:17px;letter-spacing:.5px;color:#49e08b;font-weight:700}
+.btn{background:#2a2a33;border:1px solid #3a3a46;color:#ddd;border-radius:7px;padding:7px 13px;
+  font-size:13px;cursor:pointer;transition:.15s;font-family:inherit}
+.btn:hover{background:#34343f;border-color:#49e08b;color:#fff}
+.btn.on{background:#4d4418;border-color:#e0c049;color:#f0dc8f}
+.spacer{flex:1}
+.pill{font-size:11px;padding:5px 10px;border-radius:20px;cursor:pointer;border:1px solid;letter-spacing:.5px}
+.pill.ok{background:#14321f;border-color:#2c7a52;color:#8ff0bb}
+.pill.bad{background:#3a1c1c;border-color:#e04949;color:#ffb4b4;animation:bl 1.2s infinite}
+@keyframes bl{50%{opacity:.45}}
+.master{display:flex;align-items:center;gap:8px;font-size:12px;color:#8a8a9a}
+.master input{width:120px;accent-color:#49e08b}
+#board{display:flex;flex-wrap:wrap;gap:12px;padding:18px;align-content:flex-start}
+.strip{width:200px;background:#1e1e25;border:1px solid #30303c;border-radius:12px;padding:10px;
+  display:flex;flex-direction:column;gap:7px;transition:border-color .15s,box-shadow .15s}
+.strip.playing{border-color:#49e08b;box-shadow:0 0 0 1px #49e08b33,0 0 18px #49e08b22}
+.strip.held{border-color:#8a7430;box-shadow:0 0 12px #e0c04922}
+.strip.warn{border-color:#c9a53c;box-shadow:0 0 14px #e0c04933}
+.strip.err{border-color:#e04949;box-shadow:0 0 14px #e0494933}
+.strip.drag{opacity:.35}
+.preview{position:relative;width:100%;height:98px;background:#000;border-radius:8px;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;cursor:ew-resize;touch-action:none;user-select:none}
+.preview video{width:100%;height:100%;object-fit:cover;pointer-events:none}
+.preview canvas{width:100%;height:100%;pointer-events:none}
+.badge{position:absolute;top:5px;left:5px;background:#000a;color:#49e08b;font-size:9px;
+  padding:2px 6px;border-radius:4px;letter-spacing:1px;pointer-events:none}
+.grip{position:absolute;top:3px;right:4px;color:#fff9;font-size:14px;padding:2px 5px;
+  background:#000a;border-radius:5px;cursor:grab;line-height:1}
+.grip:active{cursor:grabbing}
+.hint{position:absolute;bottom:4px;left:0;right:0;text-align:center;font-size:9px;color:#fff6;pointer-events:none}
+.name{font-size:11.5px;color:#cfcfdc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.line{display:flex;justify-content:space-between;align-items:center;font-size:10px;
+  color:#7b7b8c;font-variant-numeric:tabular-nums}
+.stat{font-size:9px;letter-spacing:.8px;padding:2px 6px;border-radius:4px;border:1px solid #3a3a46;background:#26262f;color:#9a9aad}
+.stat.p{background:#14321f;border-color:#2c7a52;color:#8ff0bb}
+.stat.h{background:#3a2f12;border-color:#8a7430;color:#f0dc8f}
+.stat.w{background:#44360f;border-color:#c9a53c;color:#ffe59c}
+.stat.e{background:#3a1c1c;border-color:#e04949;color:#ffb4b4}
+.bar{height:14px;display:flex;align-items:center;cursor:pointer;touch-action:none}
+.bar>u{display:block;width:100%;height:6px;background:#2c2c36;border-radius:3px;overflow:hidden}
+.bar>u>i{display:block;height:100%;width:0;background:#49e08b}
+.row{display:flex;gap:5px;align-items:center}
+.mini{flex:1;background:#2a2a33;border:1px solid #3a3a46;color:#ddd;border-radius:6px;
+  padding:6px 0;font-size:11.5px;cursor:pointer;white-space:nowrap;font-family:inherit}
+.mini:hover{border-color:#49e08b;color:#fff}
+.mini.on{background:#1d4d35;border-color:#49e08b;color:#8ff0bb}
+.mini.solo.on{background:#4d4418;border-color:#e0c049;color:#f0dc8f}
+.mini.mute.on{background:#4d1d1d;border-color:#e04949;color:#f0a0a0}
+.faders{display:flex;justify-content:space-around;align-items:flex-end;padding-top:4px}
+.fcol{display:flex;flex-direction:column;align-items:center;gap:4px}
+.fwrap{position:relative;width:42px;height:150px;touch-action:none}
+.fwrap input[type=range]{position:absolute;left:50%;top:50%;width:150px;height:42px;margin:0;
+  transform:translate(-50%,-50%) rotate(-90deg);-webkit-appearance:none;appearance:none;
+  background:transparent;cursor:pointer;touch-action:none;pointer-events:none}
+input[type=range]::-webkit-slider-runnable-track{height:7px;border-radius:4px;background:#2c2c36;border:1px solid #3a3a46}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:28px;margin-top:-11px;
+  border-radius:4px;background:linear-gradient(#f0f0f5,#9a9aa8);border:1px solid #000;box-shadow:0 1px 3px #000}
+input[type=range].vol::-webkit-slider-thumb{background:linear-gradient(#8ff0bb,#2c7a52)}
+input[type=range].bass::-webkit-slider-thumb{background:linear-gradient(#9ad0ff,#2c5a7a)}
+input[type=range]::-moz-range-track{height:7px;border-radius:4px;background:#2c2c36}
+input[type=range]::-moz-range-thumb{width:16px;height:28px;border-radius:4px;background:#ccc;border:1px solid #000}
+.lbl{font-size:9px;letter-spacing:1px;color:#6e6e80}
+.val{font-size:10px;color:#49e08b;font-variant-numeric:tabular-nums}
+.val.b{color:#7ab8e0}
+.meter{width:7px;height:150px;background:#23232c;border-radius:3px;overflow:hidden;
+  display:flex;align-items:flex-end;border:1px solid #30303c}
+.meter>i{width:100%;height:0;background:linear-gradient(#e04949,#e0c049 35%,#49e08b 70%)}
+.hero{width:100%;height:64px;margin-top:3px;border-radius:12px;border:2px solid;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:10px;font-family:inherit;
+  font-size:17px;font-weight:700;letter-spacing:.5px;transition:.12s;user-select:none}
+.hero .hi{font-size:25px;line-height:1}
+.hero:active{transform:translateY(2px)}
+.hero.s-play{background:#17502f;border-color:#35a165;color:#9bf5c3}
+.hero.s-play:hover{background:#1d6a3d;box-shadow:0 0 20px #49e08b44}
+.hero.s-pause{background:#53421a;border-color:#c9a53c;color:#ffe59c}
+.hero.s-pause:hover{background:#6b5520;box-shadow:0 0 20px #e0c04944}
+.hero.s-resume{background:#17395c;border-color:#3d84c9;color:#a8d6ff}
+.hero.s-resume:hover{background:#1d4a78;box-shadow:0 0 20px #49a0e044}
+#drop{position:fixed;inset:0;background:#000d;border:3px dashed #49e08b;display:none;
+  align-items:center;justify-content:center;font-size:22px;color:#49e08b;z-index:99}
+#drop.show{display:flex}
+#empty{width:100%;text-align:center;color:#55556a;padding:70px 20px;font-size:14px;line-height:2}
+#sink{position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:.01;pointer-events:none}
+#toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:200;
+  display:flex;flex-direction:column;gap:7px;align-items:center;pointer-events:none}
+.tmsg{background:#2a2a33;border:1px solid #e0c049;color:#f0dc8f;padding:9px 16px;border-radius:9px;
+  font-size:12.5px;box-shadow:0 6px 20px #000a;max-width:90vw}
+kbd{background:#2a2a33;border:1px solid #3a3a46;border-radius:4px;padding:1px 6px;font-size:11px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>▣ StemBoard</h1>
+  <button class="btn" id="pick">+ เพิ่มไฟล์</button>
+  <button class="btn" id="playZero">⏮ ALL จาก 0</button>
+  <button class="btn" id="stopAll">■ หยุดทั้งหมด</button>
+  <button class="btn" id="link" title="กรอพร้อมกันทุกช่อง">⛓ LINK</button>
+  <button class="btn on" id="fz" title="ดัน fader ขึ้นจาก 0 แล้วให้เริ่มเล่นจากวินาทีที่ 0">↑0 เฟดขึ้น = เริ่มที่ 0</button>
+  <button class="btn" id="beep">🔔 ทดสอบเสียง</button>
+  <button class="btn" id="clear">ล้างทั้งหมด</button>
+  <div class="spacer"></div>
+  <span class="pill bad" id="pill">AUDIO: ?</span>
+  <div class="master">MASTER <input type="range" id="masterVol" min="0" max="100" value="85"><span id="mval">85%</span></div>
+</header>
+
+<main id="board">
+  <div id="empty">ลากไฟล์ mp3 / mp4 มาวางตรงนี้ได้เลย (ทีละหลายไฟล์)<br>
+  <kbd>1</kbd>–<kbd>9</kbd> เล่น/หยุด ช่องนั้น &nbsp;·&nbsp; <kbd>Esc</kbd> หยุดทั้งหมด &nbsp;·&nbsp; <kbd>←</kbd><kbd>→</kbd> กรอ 5 วิ</div>
+</main>
+
+<div id="drop">วางไฟล์เพื่อเพิ่มช่อง</div>
+<div id="toast"></div>
+<div id="sink"></div>
+<input type="file" id="file" multiple accept="audio/*,video/*" hidden>
+
+<script>
+'use strict';
+/* ====================== AUDIO CORE ====================== */
+let AC=null, master=null, limiter=null;
+const mv=document.getElementById('masterVol');
+
+function initAC(){
+  if(AC) return AC;
+  try{
+    AC=new (window.AudioContext||window.webkitAudioContext)({latencyHint:'interactive'});
+    master=AC.createGain(); master.gain.value=+mv.value/100;
+    limiter=AC.createDynamicsCompressor();
+    limiter.threshold.value=-3; limiter.knee.value=0; limiter.ratio.value=20;
+    limiter.attack.value=0.003; limiter.release.value=0.25;
+    master.connect(limiter); limiter.connect(AC.destination);
+    AC.onstatechange=updatePill;
+  }catch(e){ toast('เบราว์เซอร์นี้ไม่รองรับ Web Audio — ใช้โหมดเสียงพื้นฐานแทน'); }
+  return AC;
+}
+function unlock(){
+  initAC();
+  if(AC&&AC.state!=='running'){
+    AC.resume().then(updatePill).catch(()=>{});
+    try{ const b=AC.createBuffer(1,1,22050), s=AC.createBufferSource();
+         s.buffer=b; s.connect(AC.destination); s.start(0); }catch(_){}
+  }
+  updatePill();
+}
+['pointerdown','touchstart','keydown','click'].forEach(ev=>
+  addEventListener(ev,unlock,{capture:true,passive:true}));
+
+const pill=document.getElementById('pill');
+function updatePill(){
+  const st=AC?AC.state:'ยังไม่เริ่ม';
+  pill.textContent='AUDIO: '+String(st).toUpperCase();
+  pill.className='pill '+(st==='running'?'ok':'bad');
+}
+pill.onclick=unlock; updatePill();
+
+function toast(msg,ms=4200){
+  const d=document.createElement('div'); d.className='tmsg'; d.textContent=msg;
+  document.getElementById('toast').appendChild(d);
+  setTimeout(()=>d.remove(),ms);
+}
+
+/* ---- FIX #1: ramp ที่ปลอดภัย (อ่านค่าปัจจุบันก่อน cancel เสมอ) ---- */
+function rampTo(param,value,dur){
+  if(!AC) return;
+  const now=AC.currentTime, cur=param.value;        /* อ่านก่อน! */
+  try{
+    param.cancelScheduledValues(now);
+    param.setValueAtTime(isFinite(cur)?cur:0,now);
+    param.linearRampToValueAtTime(value,now+Math.max(.006,dur||.03));
+  }catch(_){ try{param.value=value}catch(__){} }
+}
+
+/* ====================== STATE ====================== */
+const board=document.getElementById('board'), emptyMsg=document.getElementById('empty'),
+      sink=document.getElementById('sink');
+let channels=[], uid=0, dragId=null, LINK=false, FADEZERO=true;
+
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+const fmt=s=>isFinite(s)?String(Math.floor(s/60)).padStart(2,'0')+':'+String(Math.floor(s%60)).padStart(2,'0'):'--:--';
+const isVideo=f=>/^video\//.test(f.type)||/\.(mp4|webm|mov|mkv|avi|m4v)$/i.test(f.name);
+
+const PKEY='stemboard_presets';
+const presets=JSON.parse(localStorage.getItem(PKEY)||'{}');
+const savePreset=c=>{presets[c.file.name]={b:c.bassEl.value};
+  localStorage.setItem(PKEY,JSON.stringify(presets));};
+
+/* ====================== FIX #3: คิวคำสั่ง play/pause ====================== */
+function reqPlay(c){ c.want='play'; pump(c); }
+function reqPause(c){ c.want='pause'; pump(c); }
+async function pump(c){
+  if(c.busy) return;
+  c.busy=true;
+  try{
+    for(let guard=0; guard<8; guard++){
+      const w=c.want;
+      if(w==='play'){
+        if(c.el.paused||c.el.ended){
+          unlock();
+          try{ await c.el.play(); c.err=''; }
+          catch(e){ if(e&&e.name!=='AbortError'){ c.err=e.message||e.name; } }
+        }
+      }else{
+        if(!c.el.paused) c.el.pause();
+      }
+      if(c.want===w) break;              /* ไม่มีคำสั่งใหม่แทรก = จบ */
+    }
+  } finally { c.busy=false; }
+}
+
+/* ====================== SEEK ====================== */
+function seekTo(c,t,fromLink){
+  if(!isFinite(c.el.duration))return;
+  try{ c.el.currentTime=clamp(t,0,c.el.duration); }catch(_){}
+  c.stall=0;
+  if(LINK&&!fromLink) channels.forEach(o=>{ if(o!==c) seekTo(o,t,true); });
+}
+const nudge=(c,d)=>seekTo(c,c.el.currentTime+d);
+
+/* ====================== GAIN ====================== */
+function targetGain(c){
+  const anySolo=channels.some(x=>x.solo);
+  return clamp((+c.volEl.value/100)*(c.mute?0:1)*((anySolo&&!c.solo)?0:1),0,1);
+}
+function applyGain(c,fast){
+  const t=targetGain(c);
+  if(c.gain&&AC) rampTo(c.gain.gain,t,fast?.02:.04);
+  else { try{ c.el.volume=t; }catch(_){} }
+}
+function applyAll(fast){ channels.forEach(c=>applyGain(c,fast)); }
+function setVol(c,pct){
+  c.volEl.value=pct; c.last=pct/100;
+  c.strip.querySelector('.vol-v').textContent=Math.round(pct)+'%';
+}
+function ensureAudible(c){ if(+c.volEl.value<2) setVol(c,80); }
+
+/* ====================== ปุ่มใหญ่ ====================== */
+function heroClick(c){
+  unlock();
+  const el=c.el;
+  if(c.want==='play'&&!el.paused){ reqPause(c); return; }
+  if(el.ended||el.currentTime>=(el.duration||0)-.05){ try{el.currentTime=0}catch(_){} }
+  ensureAudible(c); applyGain(c,true); reqPlay(c);
+}
+function paintHero(c){
+  const el=c.el;
+  let st = (c.want==='play'&&!el.paused) ? 'pause'
+         : (el.currentTime>.05&&!el.ended) ? 'resume' : 'play';
+  if(c.heroState===st) return;
+  c.heroState=st;
+  c.hero.className='hero s-'+st;
+  c.hero.innerHTML = st==='pause'  ? '<span class="hi">⏸</span>หยุด'
+                   : st==='resume' ? '<span class="hi">⏯</span>เล่นต่อ'
+                   :                 '<span class="hi">▶</span>เล่น';
+}
+
+/* ====================== CHANNEL ====================== */
+function createChannel(file){
+  initAC();
+  const id=++uid, vid=isVideo(file);
+  const el=document.createElement(vid?'video':'audio');
+  el.src=URL.createObjectURL(file);
+  el.preload='auto'; el.playsInline=true; el.setAttribute('playsinline','');
+  el.volume=1; el.muted=false; el.disableRemotePlayback=true;
+  if(!vid) sink.appendChild(el);
+
+  let src=null,bass=null,gain=null,ana=null;
+  if(AC){
+    try{
+      src=AC.createMediaElementSource(el);
+      bass=AC.createBiquadFilter(); bass.type='lowshelf'; bass.frequency.value=120; bass.gain.value=0;
+      gain=AC.createGain(); gain.gain.value=0;
+      ana=AC.createAnalyser(); ana.fftSize=256; ana.smoothingTimeConstant=.6;
+      src.connect(bass); bass.connect(gain); gain.connect(ana); ana.connect(master);
+    }catch(err){ src=bass=gain=ana=null; el.volume=0;
+      toast('ช่องนี้ใช้โหมดเสียงพื้นฐาน (ปรับ BASS ไม่ได้)'); }
+  }else el.volume=0;
+
+  const s=document.createElement('div'); s.className='strip'; s.dataset.id=id;
+  s.innerHTML=`
+    <div class="preview">${vid?'':'<canvas width="360" height="200"></canvas>'}
+      <span class="badge">${vid?'VIDEO':'AUDIO'}</span>
+      <span class="grip" title="ลากเพื่อสลับตำแหน่ง">⠿</span>
+      <span class="hint">◀ ลากเพื่อกรอ ▶</span></div>
+    <div class="name" title="${file.name}">${file.name}</div>
+    <div class="line"><span class="cur">00:00</span><span class="stat">LOADING</span><span class="dur">--:--</span></div>
+    <div class="bar"><u><i></i></u></div>
+    <div class="row">
+      <button class="mini bk" style="flex:0 0 40px" title="ถอย 5 วิ">⏪</button>
+      <button class="mini zero" title="กลับไปต้นแล้วเล่น">⏮ จาก 0</button>
+      <button class="mini fw" style="flex:0 0 40px" title="เดิน 5 วิ">⏩</button>
+    </div>
+    <div class="faders">
+      <div class="fcol"><div class="fwrap"><input type="range" class="vol" min="0" max="100" value="0"></div>
+        <div class="lbl">VOL</div><div class="val vol-v">0%</div></div>
+      <div class="meter"><i></i></div>
+      <div class="fcol"><div class="fwrap"><input type="range" class="bass" min="-12" max="12" value="0" step="0.5"></div>
+        <div class="lbl">BASS</div><div class="val b bass-v">0.0 dB</div></div>
+    </div>
+    <div class="row">
+      <button class="mini mute" title="ปิดเสียงช่องนี้">M</button>
+      <button class="mini solo" title="ฟังเฉพาะช่องนี้">S</button>
+      <button class="mini loop" style="flex:0 0 38px" title="วนซ้ำ">⟲</button>
+      <button class="mini del" style="flex:0 0 36px">✕</button>
+    </div>
+    <button class="hero s-play"><span class="hi">▶</span>เล่น</button>`;
+  if(vid) s.querySelector('.preview').prepend(el);
+
+  const c={id,file,el,src,gain,bass,ana,strip:s,last:0,mute:false,solo:false,
+    want:'pause',busy:false,err:'',stall:0,lastT:-1,heroState:null,statState:null,
+    volEl:s.querySelector('.vol'), bassEl:s.querySelector('.bass'),
+    hero:s.querySelector('.hero'), statEl:s.querySelector('.stat'),
+    data:ana?new Uint8Array(ana.frequencyBinCount):null};
+
+  const p=presets[file.name];
+  if(p&&bass){ c.bassEl.value=p.b; bass.gain.value=+p.b;
+    s.querySelector('.bass-v').textContent=(+p.b).toFixed(1)+' dB'; }
+  if(!bass){ c.bassEl.disabled=true; s.querySelector('.bass-v').textContent='—'; }
+
+  /* ---- VOL fader ---- */
+  c.volEl.addEventListener('input',()=>{
+    const v=+c.volEl.value/100;
+    s.querySelector('.vol-v').textContent=Math.round(v*100)+'%';
+    if(v>0){
+      if(c.last===0){
+        if(FADEZERO && (el.paused||el.ended)){ try{el.currentTime=0}catch(_){} }
+        reqPlay(c);
+      }else if(c.want!=='play') reqPlay(c);
+      applyGain(c,true);
+    }else{
+      applyGain(c,true);
+      clearTimeout(c.offT);
+      c.offT=setTimeout(()=>{ if(+c.volEl.value===0){ reqPause(c); try{el.currentTime=0}catch(_){} } },180);
+    }
+    c.last=v;
+  });
+  c.bassEl.addEventListener('input',()=>{
+    if(!bass)return;
+    rampTo(bass.gain,+c.bassEl.value,.03);
+    s.querySelector('.bass-v').textContent=(+c.bassEl.value).toFixed(1)+' dB'; savePreset(c);
+  });
+
+  c.hero.onclick=()=>heroClick(c);
+  s.querySelector('.zero').onclick=()=>playFromZero(c);
+  s.querySelector('.bk').onclick=()=>nudge(c,-5);
+  s.querySelector('.fw').onclick=()=>nudge(c,5);
+  s.querySelector('.loop').onclick=e=>{ el.loop=!el.loop; e.currentTarget.classList.toggle('on',el.loop); };
+  s.querySelector('.mute').onclick=e=>{ c.mute=!c.mute; e.currentTarget.classList.toggle('on',c.mute); applyAll(); };
+  s.querySelector('.solo').onclick=e=>{ c.solo=!c.solo; e.currentTarget.classList.toggle('on',c.solo); applyAll(); };
+  s.querySelector('.del').onclick=()=>{
+    c.want='pause'; el.pause();
+    try{src&&src.disconnect()}catch(_){} try{gain&&gain.disconnect()}catch(_){}
+    URL.revokeObjectURL(el.src); el.removeAttribute('src'); try{el.load()}catch(_){}
+    el.remove(); s.remove(); channels=channels.filter(x=>x!==c); applyAll(); refresh();
+  };
+
+  /* ---- กรอด้วยแถบ progress ---- */
+  const bar=s.querySelector('.bar');
+  bar.addEventListener('pointerdown',e=>{
+    if(!isFinite(el.duration))return;
+    try{bar.setPointerCapture(e.pointerId)}catch(_){}
+    const go=ev=>{ const r=bar.getBoundingClientRect();
+      seekTo(c,(ev.clientX-r.left)/r.width*el.duration); ev.preventDefault(); };
+    go(e); bar.addEventListener('pointermove',go);
+    const up=()=>{ bar.removeEventListener('pointermove',go);
+      removeEventListener('pointerup',up); removeEventListener('pointercancel',up); };
+    addEventListener('pointerup',up); addEventListener('pointercancel',up);
+  });
+
+  /* ---- กรอด้วยการลากบนพรีวิว + ล้อเมาส์ ---- */
+  const prevBox=s.querySelector('.preview'), grip=s.querySelector('.grip');
+  prevBox.addEventListener('pointerdown',e=>{
+    if(e.target===grip||!isFinite(el.duration))return;
+    const x0=e.clientX, t0=el.currentTime;
+    const sens=Math.max(el.duration/Math.max(260,prevBox.clientWidth*2.2),.02);
+    try{prevBox.setPointerCapture(e.pointerId)}catch(_){}
+    const mvh=ev=>{ seekTo(c,t0+(ev.clientX-x0)*sens); ev.preventDefault(); };
+    prevBox.addEventListener('pointermove',mvh);
+    const up=()=>{ prevBox.removeEventListener('pointermove',mvh);
+      removeEventListener('pointerup',up); removeEventListener('pointercancel',up); };
+    addEventListener('pointerup',up); addEventListener('pointercancel',up);
+  });
+  prevBox.addEventListener('wheel',e=>{ if(!isFinite(el.duration))return;
+    e.preventDefault(); nudge(c,(e.deltaY>0?1:-1)*2); },{passive:false});
+
+  el.addEventListener('loadedmetadata',()=>{ s.querySelector('.dur').textContent=fmt(el.duration); });
+  el.addEventListener('ended',()=>{ if(!el.loop) c.want='pause'; });
+  el.addEventListener('error',()=>{ c.err='เปิดไฟล์ไม่ได้ (โคเดกไม่รองรับ?)';
+    toast('เปิดไฟล์ไม่ได้: '+file.name); });
+  el.addEventListener('stalled',()=>{ c.stall=Math.max(c.stall,2); });
+
+  /* ---- สลับตำแหน่ง ---- */
+  grip.addEventListener('pointerdown',e=>{ e.stopPropagation(); s.draggable=true; });
+  addEventListener('pointerup',()=>{ if(dragId!==id) s.draggable=false; });
+  s.addEventListener('dragstart',e=>{ dragId=id; s.classList.add('drag'); e.dataTransfer.effectAllowed='move';
+    try{e.dataTransfer.setData('text/plain',String(id))}catch(_){} });
+  s.addEventListener('dragend',()=>{ dragId=null; s.classList.remove('drag'); s.draggable=false; });
+  s.addEventListener('dragover',e=>{ e.preventDefault(); if(dragId===null||dragId===id)return;
+    const from=board.querySelector('[data-id="'+dragId+'"]'); if(!from)return;
+    const r=s.getBoundingClientRect();
+    board.insertBefore(from,e.clientX<r.left+r.width/2?s:s.nextSibling); });
+  s.addEventListener('drop',e=>e.preventDefault());
+
+  board.appendChild(s); channels.push(c); refresh(); paintHero(c);
+  if(!vid) queueWave(file,s.querySelector('canvas'));
+}
+
+/* ====================== TRANSPORT ====================== */
+function playFromZero(c){
+  unlock(); ensureAudible(c);
+  try{c.el.currentTime=0}catch(_){}
+  applyGain(c,true); reqPlay(c);
+}
+function stopAll(){
+  channels.forEach(c=>{ setVol(c,0); applyGain(c,false); });
+  setTimeout(()=>channels.forEach(c=>{ reqPause(c); try{c.el.currentTime=0}catch(_){} }),180);
+}
+
+/* ====================== FIX #2: WATCHDOG ====================== */
+setInterval(()=>{
+  if(AC&&AC.state==='suspended'&&channels.some(c=>c.want==='play')) AC.resume().catch(()=>{});
+  channels.forEach(c=>{
+    const el=c.el;
+    if(c.want!=='play'){ c.stall=0; c.lastT=el.currentTime; return; }
+    if(el.paused&&!el.ended){ pump(c); return; }       /* ถูกหยุดเองโดยไม่ได้สั่ง → สั่งเล่นซ้ำ */
+    if(!el.paused){
+      if(Math.abs(el.currentTime-c.lastT)<0.002) c.stall++; else c.stall=0;
+      c.lastT=el.currentTime;
+      if(c.stall>=5){                                   /* ค้างเกิน ~1.5 วิ → สะกิดให้ไปต่อ */
+        c.stall=0;
+        const t=el.currentTime;
+        try{ el.currentTime=Math.min((el.duration||t)-.05,t+.02); }catch(_){}
+        el.play().catch(()=>{});
+      }
+    }
+  });
+},300);
+
+/* ====================== WAVEFORM (คิวทีละไฟล์) ====================== */
+const wq=[]; let wBusy=false;
+function queueWave(file,cv){
+  if(!cv)return;
+  const ctx=cv.getContext('2d');
+  ctx.fillStyle='#0c0c10'; ctx.fillRect(0,0,cv.width,cv.height);
+  ctx.fillStyle='#303040'; ctx.font='34px sans-serif'; ctx.textAlign='center';
+  ctx.fillText('♪',cv.width/2,cv.height/2+12);
+  if(!AC||file.size>80*1024*1024) return;
+  wq.push([file,cv]); runWave();
+}
+async function runWave(){
+  if(wBusy||!wq.length)return;
+  wBusy=true;
+  const [file,cv]=wq.shift();
+  try{
+    const buf=await AC.decodeAudioData(await file.arrayBuffer());
+    const ctx=cv.getContext('2d'), d=buf.getChannelData(0), N=180, step=Math.floor(d.length/N)||1;
+    ctx.fillStyle='#0c0c10'; ctx.fillRect(0,0,cv.width,cv.height);
+    ctx.fillStyle='#49e08b';
+    for(let i=0;i<N;i++){ let p=0;
+      for(let j=0;j<step;j+=16) p=Math.max(p,Math.abs(d[i*step+j]||0));
+      const h=Math.max(2,p*cv.height*.92);
+      ctx.fillRect(i*(cv.width/N),(cv.height-h)/2,cv.width/N-1.5,h); }
+  }catch(_){}
+  wBusy=false;
+  setTimeout(runWave,60);
+}
+
+/* ====================== RENDER LOOP ====================== */
+function setStat(c,txt,cls){
+  if(c.statState===txt)return;
+  c.statState=txt; c.statEl.textContent=txt; c.statEl.className='stat '+cls;
+}
+(function tick(){
+  channels.forEach(c=>{
+    const el=c.el;
+    const moving = c.want==='play' && !el.paused && c.stall<2;
+    const real   = moving && el.readyState>=3;
+    c.strip.classList.toggle('playing',real);
+    c.strip.classList.toggle('held',!real&&el.paused&&el.currentTime>.05&&!el.ended&&!c.err);
+    c.strip.classList.toggle('warn',c.want==='play'&&!real&&!c.err);
+    c.strip.classList.toggle('err',!!c.err);
+    c.strip.querySelector('.cur').textContent=fmt(el.currentTime);
+    c.strip.querySelector('.bar>u>i').style.width=(el.duration?el.currentTime/el.duration*100:0)+'%';
+
+    if(c.err) setStat(c,'ERROR','e');
+    else if(real) setStat(c,'PLAYING','p');
+    else if(c.want==='play'&&c.stall>=2) setStat(c,'STALL','w');
+    else if(c.want==='play') setStat(c,'BUFFER','w');
+    else if(el.currentTime>.05&&!el.ended) setStat(c,'HOLD','h');
+    else if(el.readyState>=1) setStat(c,'READY','');
+    else setStat(c,'LOADING','');
+
+    paintHero(c);
+    let lv=0;
+    if(c.ana&&c.data){ c.ana.getByteTimeDomainData(c.data);
+      let sum=0; for(let i=0;i<c.data.length;i++){const v=(c.data[i]-128)/128;sum+=v*v;}
+      lv=Math.sqrt(sum/c.data.length)*260;
+    }else if(real) lv=+c.volEl.value;
+    c.strip.querySelector('.meter>i').style.height=Math.min(100,lv)+'%';
+  });
+  requestAnimationFrame(tick);
+})();
+
+/* ====================== FADER (throttle ด้วย rAF) ====================== */
+document.addEventListener('pointerdown',e=>{
+  const f=e.target.closest&&e.target.closest('.fwrap'); if(!f)return;
+  const inp=f.querySelector('input[type=range]'); if(!inp||inp.disabled)return;
+  unlock();
+  const min=+inp.min,max=+inp.max,st=+(inp.step||1);
+  let pend=null, raf=0;
+  const commit=()=>{
+    raf=0; if(pend===null)return;
+    const v=pend; pend=null;
+    if(+inp.value!==v){ inp.value=v; inp.dispatchEvent(new Event('input',{bubbles:true})); }
+  };
+  const move=ev=>{
+    const r=f.getBoundingClientRect();
+    const p=1-clamp((ev.clientY-r.top)/r.height,0,1);
+    pend=clamp(Math.round((min+p*(max-min))/st)*st,min,max);
+    if(!raf) raf=requestAnimationFrame(commit);
+    ev.preventDefault();
+  };
+  try{f.setPointerCapture(e.pointerId)}catch(_){}
+  move(e); commit();
+  f.addEventListener('pointermove',move);
+  const up=()=>{ commit(); if(raf)cancelAnimationFrame(raf); raf=0;
+    f.removeEventListener('pointermove',move);
+    removeEventListener('pointerup',up); removeEventListener('pointercancel',up); };
+  addEventListener('pointerup',up); addEventListener('pointercancel',up);
+},true);
+
+/* ====================== UI ====================== */
+const refresh=()=>emptyMsg.style.display=channels.length?'none':'block';
+const addFiles=fs=>[...fs].forEach(f=>{
+  if(/^(audio|video)\//.test(f.type)||/\.(mp3|mp4|wav|ogg|m4a|flac|webm|mov|m4v)$/i.test(f.name)) createChannel(f);
+  else toast('ข้ามไฟล์ที่ไม่รองรับ: '+f.name); });
+document.getElementById('pick').onclick=()=>document.getElementById('file').click();
+document.getElementById('file').onchange=e=>{addFiles(e.target.files);e.target.value='';};
+document.getElementById('playZero').onclick=()=>{unlock();channels.forEach(playFromZero);};
+document.getElementById('stopAll').onclick=stopAll;
+document.getElementById('link').onclick=e=>{LINK=!LINK;e.currentTarget.classList.toggle('on',LINK);
+  toast(LINK?'LINK เปิด — กรอช่องเดียว ทุกช่องตามหมด':'LINK ปิด');};
+document.getElementById('fz').onclick=e=>{FADEZERO=!FADEZERO;e.currentTarget.classList.toggle('on',FADEZERO);
+  toast(FADEZERO?'เฟดขึ้นจาก 0 = เริ่มเล่นที่วินาที 0':'เฟดขึ้นจาก 0 = เล่นต่อจากตำแหน่งเดิม');};
+document.getElementById('clear').onclick=()=>{
+  channels.forEach(c=>{ c.want='pause'; c.el.pause(); URL.revokeObjectURL(c.el.src);
+    c.el.removeAttribute('src'); c.el.remove(); c.strip.remove(); });
+  channels=[]; refresh();
+};
+document.getElementById('beep').onclick=()=>{
+  unlock(); if(!AC){toast('ไม่มี AudioContext');return;}
+  const o=AC.createOscillator(), g=AC.createGain();
+  o.type='sine'; o.frequency.value=440; g.gain.value=.0001;
+  o.connect(g); g.connect(master); o.start();
+  const t=AC.currentTime;
+  g.gain.exponentialRampToValueAtTime(.3,t+.03);
+  g.gain.exponentialRampToValueAtTime(.0001,t+.6); o.stop(t+.65);
+  toast('ไม่ได้ยินบี๊บ = ปัญหาที่ลำโพง/ระดับเสียงเครื่อง ไม่ใช่ไฟล์');
+};
+mv.oninput=e=>{ if(master) rampTo(master.gain,e.target.value/100,.03);
+  document.getElementById('mval').textContent=e.target.value+'%'; };
+
+const dz=document.getElementById('drop'); let dc=0;
+addEventListener('dragenter',e=>{if(e.dataTransfer&&[...e.dataTransfer.types].includes('Files')){dc++;dz.classList.add('show');}});
+addEventListener('dragleave',()=>{if(--dc<=0)dz.classList.remove('show')});
+addEventListener('dragover',e=>e.preventDefault());
+addEventListener('drop',e=>{e.preventDefault();dc=0;dz.classList.remove('show');unlock();
+  if(e.dataTransfer.files.length) addFiles(e.dataTransfer.files);});
+addEventListener('keydown',e=>{
+  if(/INPUT|TEXTAREA/.test(e.target.tagName))return;
+  if(e.key==='Escape'){ e.preventDefault(); stopAll(); }
+  if(e.key==='ArrowLeft'){ e.preventDefault(); channels.forEach(c=>nudge(c,-5)); }
+  if(e.key==='ArrowRight'){ e.preventDefault(); channels.forEach(c=>nudge(c,5)); }
+  if(/^[1-9]$/.test(e.key)){ const c=channels[+e.key-1]; if(c) heroClick(c); }
+});
+addEventListener('visibilitychange',()=>{ if(!document.hidden) unlock(); });
+</script>
+</body>
+</html>
